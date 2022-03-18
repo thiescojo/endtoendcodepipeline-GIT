@@ -1,0 +1,61 @@
+# launch ec2 instance (assign admin role)
+# create s3 bucket and upload the template from the local machine
+# installs cfn lint tool to test the template
+# steps:
+# aws --version (comes with ec2)
+# python --version (comes with ec2)
+
+# pip3 --version
+# install pip3
+
+# cfn-lint --version
+# pip3 install cfn-lint
+
+# test the template validation with cfn-lint
+# cfn-lint templateName.yaml
+
+
+# build the cloudformation template
+
+# aws cloudformation package --template-file end-to-end-codepipeline.yml --s3-bucket endtoencodepipeline --output-template-file packagedtemplate.yaml
+
+
+
+
+# buildspec phase
+
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+  pre_build:
+    commands:
+      - echo checking if aws CLI is installed ...
+      - aws --version  
+      - echo checking if python is installed ... 
+      - python --version   
+      - echo checking if pip is installed ...
+      - pip3 --version
+      # - echo checking if cfn-lint is installed ...
+      # - cfn-lint --version
+      - echo cfn-lint installation started on `date`      
+      - echo installing cfn-lint
+      - pip3  install cfn-lint
+      - echo checking if cfn-lint is installed ...  
+      - cfn-lint --version      
+
+  build:
+    commands:
+      - echo validating cfn-template ...
+      - cfn-lint end-to-end-codepipeline.yml
+      - echo cfn template Build started on `date`
+      - aws cloudformation package --template-file end-to-end-codepipeline.yml --s3-bucket endtoencodepipeline --output-template-file packagedtemplate.yaml
+
+  post_build:
+    commands:
+      - echo Build completed on `date`
+artifacts:
+  files:
+    - '**/*'

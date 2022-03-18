@@ -1,0 +1,326 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This template dynamically deploys a VPC, EC2 InstanceTypes and Security Group with SSH and HTTP access. "
+
+Parameters:
+  VpcCIDR:
+    Default: 10.8.0.0/16
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+
+  PublicSubnet1CIDR:
+    Default: 10.8.0.0/24
+    Description: Please enter the IP range (CIDR notation) for the public subnet 1
+    Type: String
+
+  PublicSubnet2CIDR:
+    Default: 10.8.1.0/24
+    Description: Please enter the IP range (CIDR notation) for the public subnet 2
+    Type: String
+
+  PrivateSubnet1CIDR:
+    Default: 10.8.2.0/24
+    Description: Please enter the IP range (CIDR notation) for the private subnet 1
+    Type: String
+
+  PrivateSubnet2CIDR:
+    Default: 10.8.3.0/24
+    Description: Please enter the IP range (CIDR notation) for the private subnet 2
+    Type: String
+
+  PrivateSubnet3CIDR:
+    Default: 10.8.4.0/24
+    Description: Please enter the IP range (CIDR notation) for the private subnet 3
+    Type: String
+
+  PrivateSubnet4CIDR:
+    Default: 10.8.5.0/24
+    Description: Please enter the IP range (CIDR notation) for the private subnet 4
+    Type: String
+
+  SecurityGroupDescription:
+    Description: Security Group to allow ssh and http traffic
+    Type: String
+  SecurityGroupPort1:
+    Description: lock to my personal IP
+    Type: Number
+    Default: 22
+    MinValue: 20 # out range 19
+    MaxValue: 65535
+  SecurityGroupPort2:
+    Description: Allow http traffic
+    Type: Number
+    Default: 80
+    MinValue: 20 # out range 19
+    MaxValue: 65535
+
+  SecurityGroupIngressCIDR1:
+    Description: Determines traffic that can reach my instance (locked it to my Personal IP)
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  SecurityGroupIngressCIDR2:
+    Description: Determines traffic that can reach my instance(opened to http)
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  # InstanceType:
+  #   Description: EC2 instance type (has default, AllowedValues)
+  #   Type: AWS::SSM::Parameter::Value<String>
+  #   Default: ImagId-Parameter
+  #   AllowedValues: #possible values
+  #     - t1.micro
+  #     - t2.nano
+  #     - t2.micro
+  #     - t2.small
+  #   ConstraintDescription: must be a valid EC2 instance type.
+
+  KeyName:
+    Description: Key Pair for EC2
+    Type: 'AWS::EC2::KeyPair::KeyName'  
+
+
+  # InstanceType:
+  #   Description: This is amazon-linux EC2 instance 
+  #   Type: AWS::SSM::Parameter::Value<String>
+  #   Default: ImagId-Parameter
+   
+  ImageId: 
+    Description: This is amazon-linux server instance imageId
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2022-ami-kernel-5.10-x86_64
+
+  InstanceType:
+    Description: EC2 instance type (has default value and AllowedValues)
+    Type: String
+    Default: t2.micro
+    AllowedValues: #possible values
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+    ConstraintDescription: must be a valid EC2 instance type.
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value: VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: VPC Internet Gateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+# Create Public Subnet1
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public Subnet 1
+      VpcId: !Ref VPC
+
+# Create Public Subnet2
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public Subnet 2
+      VpcId: !Ref VPC
+
+# Create Private Subnet1
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Private Subnet 1 
+      VpcId: !Ref VPC
+
+# Create Private Subnet2
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Private Subnet 2 
+      VpcId: !Ref VPC
+
+# Create Private Subnet3
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Private Subnet 3 | Database Tier
+      VpcId: !Ref VPC
+
+# Create Private Subnet4
+  PrivateSubnet4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet4CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Private Subnet 4 | Database Tier
+      VpcId: !Ref VPC  
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Public Route Table
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Private Route Table
+
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+  
+  #EC2 Instance
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ImageId    
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      SubnetId: !Ref PublicSubnet1
+      KeyName: !Ref KeyName
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "&lt;html&gt;&lt;body&gt;&lt;h1&gt;Hello from Server in ${AWS::Region}&lt;h1&gt;&lt;/body&gt;&lt;/html&gt;" &gt; /var/www/html/index.html      
+      Tags: 
+        - 
+          Key: "Name"
+          Value: "webserver"
+
+  EC2SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: !Ref SecurityGroupDescription
+      SecurityGroupIngress:
+        - CidrIp: !Ref SecurityGroupIngressCIDR1
+          FromPort: !Ref SecurityGroupPort1
+          ToPort: !Ref SecurityGroupPort1
+          IpProtocol: tcp
+        - CidrIp: !Ref SecurityGroupIngressCIDR2
+          FromPort: !Ref SecurityGroupPort2
+          ToPort: !Ref SecurityGroupPort2
+          IpProtocol: tcp
+      VpcId: !Ref VPC
+
+Outputs:
+  SSHSecurityGroup:
+    Description: The SSH Security Group for our Company
+    Value: !Ref EC2SecurityGroup # SG name
+    Export: # Make the output available to re-use
+      Name: SecurityGroupSSH 
+  HTTPSecurityGroup:
+    Description: The HTTP Security Group for our Company
+    Value: !Ref EC2SecurityGroup # SG name
+    Export: # Make the output available to re-use
+      Name: SecurityGroupHTTP 
+  EC2Intance:
+    Description: Type of Instance
+    Value: !Ref EC2Instance 
+    Export: # Make the output available to re-use
+      Name: MyEc2Instance 
+
+  WebServerURL:
+      Value: !Join ["", ["http://", !GetAtt EC2Instance.PublicDnsName, ":80"]]
+      Description: URL for the apache web server
+      Export: # Make the output available to re-use
+        Name: WebURL  
+
+  EC2DnsName:
+    Description: The DNS name of the EC2Instance
+    Value: !GetAtt EC2Instance.PublicDnsName
+    Export: # Make the output available to re-use
+        Name: DNSName
+
+
+  
+  
+   
